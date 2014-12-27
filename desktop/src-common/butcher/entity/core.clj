@@ -86,7 +86,7 @@ id: id"
 
 (defn player
   []
-  (assoc (box 2 2 2 (color :blue) 0 0 0 :player)
+  (assoc (box 2 2 2 (color 0 0 1 1) 0 0 0 :player)
     :on-render
     (fn [{:keys [x z] :as this} entities]
       (let [left? (key-pressed? :dpad-left)
@@ -101,11 +101,27 @@ id: id"
                    up? -1
                    down? 1
                    :else 0)
-            x-vel (/ x-vel 20)
-            z-vel (/ z-vel 20)
+            x-vel (/ x-vel 10)
+            z-vel (/ z-vel 10)
             x (+ x x-vel)
             z (+ z z-vel)
             moved (assoc this :x x :z z)]
         (if (colliding-any? moved entities)
           this
           moved)))))
+
+(defn make-boxes
+  [n]
+  (let [sizes (range 3 7)
+        colors (range 0 1 0.125)
+        positions (range -30 30)]
+    (take n (repeatedly #(box (rand-nth sizes)
+                              (rand-nth sizes)
+                              (rand-nth sizes)
+                              (color (rand-nth colors)
+                                     (rand-nth colors)
+                                     (rand-nth colors)
+                                     1)
+                              (rand-nth positions)
+                              0 ;; keep them on the flat plane
+                              (rand-nth positions))))))
