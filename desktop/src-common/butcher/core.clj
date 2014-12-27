@@ -107,37 +107,24 @@
   (fn [screen entities]
     (update! screen :camera (orthographic) :renderer (stage))
     (assoc (label "-" (color :white))
-      :id :drag))
+      :id :fps))
 
   :on-render
   (fn [screen entities]
-    (let [dragging (:dragging screen)
-          drag-x (:drag-x screen)
-          drag-y (:drag-y screen)
-          x (game :x)
-          y (game :y)]
-      (update! screen
-               :drag-x (- x (or drag-x x))
-               :drag-y (- y (or drag-y y)))
-      (->> (for [entity entities]
-             (case (:id entity)
-               :drag (doto entity
-                       (label! :set-text
-                               (if dragging
-                                 (str "drag-x: " drag-x
-                                      " drag-y: " drag-y)
-                                 (str (game :fps)))))
-               entity))
-           (render! screen))))
+    (->> (for [entity entities]
+           (case (:id entity)
+             :fps (doto entity
+                    (label! :set-text
+                            (str (game :fps))))
+             entity))
+         (render! screen)))
 
   :on-touch-down
   (fn [screen entities]
-    (update! screen :dragging true)
     nil)
 
   :on-touch-up
   (fn [screen entities]
-    (update! screen :dragging false)
     nil)
   
   :on-resize
