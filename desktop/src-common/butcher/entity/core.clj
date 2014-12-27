@@ -34,26 +34,19 @@
         high (+ val half)]
     [low high]))
 
+;; http://stackoverflow.com/a/27672249/1404338
+(defn conflicting?
+  [this that dimension size]
+  (let [[this-c1 this-c2] (around (dimension this) (size this))
+        [that-c1 that-c2] (around (dimension that) (size that))]
+    (and (<= this-c1 that-c2)
+         (<= that-c1 this-c2))))
+
 (defn colliding?
   [this that]
-  (let [[this-x1 this-x2] (around (:x this) (:w this))
-        [this-y1 this-y2] (around (:y this) (:h this))
-        [this-z1 this-z2] (around (:z this) (:l this))
-        [that-x1 that-x2] (around (:x that) (:w that))
-        [that-y1 that-y2] (around (:y that) (:h that))
-        [that-z1 that-z2] (around (:z that) (:l that))]
-    (or (and (or (<= that-x1 this-x1 that-x2)
-                 (<= that-x1 this-x2 that-x2))
-             (or (<= that-y1 this-y1 that-y2)
-                 (<= that-y1 this-y2 that-y2))
-             (or (<= that-z1 this-z1 that-z2)
-                 (<= that-z1 this-z2 that-z2)))
-        (and (or (<= this-x1 that-x1 this-x2)
-                 (<= this-x1 that-x2 this-x2))
-             (or (<= this-y1 that-y1 this-y2)
-                 (<= this-y1 that-y2 this-y2))
-             (or (<= this-z1 that-z1 this-z2)
-                 (<= this-z1 that-z2 this-z2))))))
+  (every? true? (map #(conflicting? this that %1 %2)
+                     [:x :y :z]
+                     [:w :h :l])))
 
 (defn colliding-any?
   [{:keys [id] :as entity} entities]
