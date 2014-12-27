@@ -12,7 +12,7 @@
   [screen entities]
   ;; move camera with to center on the box
   (doseq [{:keys [x z id]} entities]
-    (when (= id :box)
+    (when (= id :player)
       (position! screen x 5 z)))
   entities)
 
@@ -26,30 +26,9 @@
                        (direction! 0 2 0)
                        (near! 0.1)
                        (far! 300)))
-    [(assoc (e/box 2 2 2 (color :blue) 0 0 0 :box)
-       :on-render (fn [{:keys [x z] :as this} entities]
-                    (let [left? (key-pressed? :dpad-left)
-                          right? (key-pressed? :dpad-right)
-                          up? (key-pressed? :dpad-up)
-                          down? (key-pressed? :dpad-down)
-                          x-vel (cond
-                                 left? -1
-                                 right? 1
-                                 :else 0)
-                          z-vel (cond
-                                 up? -1
-                                 down? 1
-                                 :else 0)
-                          x-vel (/ x-vel 20)
-                          z-vel (/ z-vel 20)
-                          x (+ x x-vel)
-                          z (+ z z-vel)
-                          moved (assoc this :x x :z z)]
-                      (if (e/colliding-any? moved entities)
-                        this
-                        moved))))
-     (e/box 1 2 3 (color :red) 4 0 0 :b1)
-     (e/box 3 3 2 (color :yellow) -2 0 -4 :b2)])
+    [(e/player)
+     (e/box 1 2 3 (color :red) 4 0 0)
+     (e/box 3 3 2 (color :yellow) -2 0 -4)])
 
   :on-render
   (fn [screen entities]

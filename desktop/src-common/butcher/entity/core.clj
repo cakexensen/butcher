@@ -73,11 +73,39 @@ x: x position
 y: y position
 z: z position
 id: id"
-  [w h l c x y z id]
-  (let [attr (attribute! :color :create-diffuse c)
-        model-mat (material :set attr)
-        model-attrs (bit-or (usage :position) (usage :normal))
-        builder (model-builder)]
-    (-> (model-builder! builder :create-box w h l model-mat model-attrs)
-        model
-        (assoc :w w :h h :l l :x x :y y :z z :id id))))
+  ([w h l c x y z id]
+     (let [attr (attribute! :color :create-diffuse c)
+           model-mat (material :set attr)
+           model-attrs (bit-or (usage :position) (usage :normal))
+           builder (model-builder)]
+       (-> (model-builder! builder :create-box w h l model-mat model-attrs)
+           model
+           (assoc :w w :h h :l l :x x :y y :z z :id id))))
+  ([w h l c x y z]
+     (box w h l c x y z (gensym))))
+
+(defn player
+  []
+  (assoc (box 2 2 2 (color :blue) 0 0 0 :player)
+    :on-render
+    (fn [{:keys [x z] :as this} entities]
+      (let [left? (key-pressed? :dpad-left)
+            right? (key-pressed? :dpad-right)
+            up? (key-pressed? :dpad-up)
+            down? (key-pressed? :dpad-down)
+            x-vel (cond
+                   left? -1
+                   right? 1
+                   :else 0)
+            z-vel (cond
+                   up? -1
+                   down? 1
+                   :else 0)
+            x-vel (/ x-vel 20)
+            z-vel (/ z-vel 20)
+            x (+ x x-vel)
+            z (+ z z-vel)
+            moved (assoc this :x x :z z)]
+        (if (colliding-any? moved entities)
+          this
+          moved)))))
