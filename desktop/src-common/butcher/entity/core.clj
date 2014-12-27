@@ -27,6 +27,41 @@
     :x (- (:x entity) x)
     :z (- (:z entity) z)))
 
+(defn around
+  [val radius]
+  (let [half (/ radius 2)
+        low (- val half)
+        high (+ val half)]
+    [low high]))
+
+(defn colliding?
+  [this that]
+  (let [[this-x1 this-x2] (around (:x this) (:w this))
+        [this-y1 this-y2] (around (:y this) (:h this))
+        [this-z1 this-z2] (around (:z this) (:l this))
+        [that-x1 that-x2] (around (:x that) (:w that))
+        [that-y1 that-y2] (around (:y that) (:h that))
+        [that-z1 that-z2] (around (:z that) (:l that))]
+    (or (and (or (<= that-x1 this-x1 that-x2)
+                 (<= that-x1 this-x2 that-x2))
+             (or (<= that-y1 this-y1 that-y2)
+                 (<= that-y1 this-y2 that-y2))
+             (or (<= that-z1 this-z1 that-z2)
+                 (<= that-z1 this-z2 that-z2)))
+        (and (or (<= this-x1 that-x1 this-x2)
+                 (<= this-x1 that-x2 this-x2))
+             (or (<= this-y1 that-y1 this-y2)
+                 (<= this-y1 that-y2 this-y2))
+             (or (<= this-z1 that-z1 this-z2)
+                 (<= this-z1 that-z2 this-z2))))))
+
+(defn colliding-any?
+  [{:keys [id] :as entity} entities]
+  (some
+   #(colliding? entity %)
+   ;; check entities other than current entity
+   (filter #(not= (:id %) id) entities)))
+
 ;; entity constructors
 
 (defn box
@@ -45,4 +80,4 @@ id: id"
         builder (model-builder)]
     (-> (model-builder! builder :create-box w h l model-mat model-attrs)
         model
-        (assoc :x x :y y :z z :id id))))
+        (assoc :w w :h h :l l :x x :y y :z z :id id))))

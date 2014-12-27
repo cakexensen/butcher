@@ -27,7 +27,7 @@
                        (near! 0.1)
                        (far! 300)))
     [(assoc (e/box 2 2 2 (color :blue) 0 0 0 :box)
-       :on-render (fn [{:keys [x z] :as this}]
+       :on-render (fn [{:keys [x z] :as this} entities]
                     (let [left? (key-pressed? :dpad-left)
                           right? (key-pressed? :dpad-right)
                           up? (key-pressed? :dpad-up)
@@ -43,8 +43,11 @@
                           x-vel (/ x-vel 20)
                           z-vel (/ z-vel 20)
                           x (+ x x-vel)
-                          z (+ z z-vel)]
-                      (assoc this :x x :z z))))
+                          z (+ z z-vel)
+                          moved (assoc this :x x :z z)]
+                      (if (e/colliding-any? moved entities)
+                        this
+                        moved))))
      (e/box 1 2 3 (color :red) 4 0 0 :b1)
      (e/box 3 3 2 (color :yellow) -2 0 -4 :b2)])
 
@@ -54,7 +57,7 @@
     (->> (for [entity entities]
            ;; call entity render fns
            (if (:on-render entity)
-             ((:on-render entity) entity)
+             ((:on-render entity) entity entities)
              entity))
          (render! screen)
          (update-screen! screen)))
