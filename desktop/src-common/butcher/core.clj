@@ -23,8 +23,9 @@
 
 (defn move-flat
   [entity x z]
-  (let [trans (-> entity :object (. transform))]
-    (matrix-4! trans :translate x 0 z)))
+  (assoc entity
+    :x (- (:x entity) x)
+    :z (- (:z entity) z)))
 
 (defscreen main-screen
   :on-show
@@ -32,7 +33,7 @@
     (update! screen
              :renderer (model-batch)
              :camera (doto (perspective 75 (game :width) (game :height))
-                       (position! 0 3 3)
+                       (position! 3 3 -3)
                        (direction! 0 0 0)
                        (near! 0.1)
                        (far! 300)))
@@ -45,27 +46,43 @@
           (assoc :x 0 :y 0 :z 0 :id :box))))
 
   :on-render
-  (fn [{:keys [drag-x drag-y] :as screen} entities]
+  (fn [{:keys [drag-x drag-y move-x move-z] :as screen} entities]
     (clear! 0 0 0 1)
     (let [x (game :x)
           y (game :y)
           delta-x (- x (or drag-x x))
-          delta-y (- y (or drag-y y))]
+          delta-y (- y (or drag-y y))
+          move-x (/ (or move-x 0) 20)
+          move-z (/ (or move-z 0) 20)]
       (when drag-x
         (update! screen
                  :drag-x x
                  :drag-y y))
       (->> (for [entity entities]
              (case (:id entity)
-               :box (if drag-x
-                      (doto entity
-                        (rotate! delta-x delta-y))
-                      entity)
+               :box (move-flat (doto entity
+                                  (rotate! delta-x delta-y))
+                                move-x move-z)
                entity))
            (render! screen))))
   
   :on-key-down
-  (fn [screen entities])
+  (fn [screen entities]
+    (condp = (:key screen)
+      (key-code :dpad-left) (update! screen :move-x -1)
+      (key-code :dpad-right) (update! screen :move-x 1)
+      (key-code :dpad-up) (update! screen :move-z 1)
+      (key-code :dpad-down) (update! screen :move-z -1))
+    nil)
+
+  :on-key-up
+  (fn [screen entities]
+    (condp = (:key screen)
+      (key-code :dpad-left) (update! screen :move-x 0)
+      (key-code :dpad-right) (update! screen :move-x 0)
+      (key-code :dpad-up) (update! screen :move-z 0)
+      (key-code :dpad-down) (update! screen :move-z 0))
+    nil)
 
   :on-touch-down
   (fn [screen entities]
