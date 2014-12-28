@@ -8,14 +8,15 @@
 (def manager (asset-manager))
 (set-asset-manager! manager)
 
-(def camera-angle-z 5)
+(def camera-y 5)
+(def camera-z 5)
 
 (defn update-screen!
   [screen entities]
   ;; move camera with to center on the box
   (doseq [{:keys [x z id]} entities]
     (when (= id :player)
-      (position! screen x 5 (+ z camera-angle-z))))
+      (position! screen x camera-y (+ z camera-z))))
   entities)
 
 (defscreen main-screen
@@ -24,7 +25,7 @@
     (update! screen
              :renderer (model-batch)
              :camera (doto (perspective 75 (game :width) (game :height))
-                       (position! 0 8 camera-angle-z)
+                       (position! 0 camera-y camera-z)
                        (direction! 0 2 0)
                        (near! 0.1)
                        (far! 300)))
