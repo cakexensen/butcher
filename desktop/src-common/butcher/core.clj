@@ -17,6 +17,8 @@
 (def default-screen-width (* 3 screen-width))
 (def default-screen-height (* 3 screen-height))
 
+(def resolution-step 0.125)
+
 (def camera-y 5)
 (def camera-z 5)
 
@@ -30,24 +32,28 @@
 
 (defn setup-pixelate!
   "change pixelation factor for rendering"
-  [{:keys [fbo fbo-batch] :as screen}]
-  (when fbo
-    (.dispose fbo))
-  (when fbo-batch
-    (.dispose fbo-batch))
-  (update! screen
-           :fbo (doto (FrameBuffer. (pixmap-format :r-g-b-888)
-                                    ;; compute an appropriate width
-                                    ;; based on real screen resolution
-                                    (/ (game :width)
-                                       (/ (game :height) screen-height))
-                                    screen-height
-                                    true)
-                  (-> .getColorBufferTexture
-                      (.setFilter
-                       Texture$TextureFilter/Nearest
-                       Texture$TextureFilter/Nearest)))
-           :fbo-batch (SpriteBatch.)))
+  ([screen]
+     (setup-pixelate! screen 1))
+  ([{:keys [fbo fbo-batch] :as screen} resolution-modifier]
+     (when fbo
+       (.dispose fbo))
+     (when fbo-batch
+       (.dispose fbo-batch))
+     (let [screen-height (* resolution-modifier screen-height)]
+       (update! screen
+                :fbo (doto (FrameBuffer. (pixmap-format :r-g-b-888)
+                                         ;; compute an appropriate width
+                                         ;; based on real screen resolution
+                                         (/ (game :width)
+                                            (/ (game :height) screen-height))
+                                         screen-height
+                                         true)
+                       (-> .getColorBufferTexture
+                           (.setFilter
+                            Texture$TextureFilter/Nearest
+                            Texture$TextureFilter/Nearest)))
+                :fbo-batch (SpriteBatch.)
+                :resolution-modifier resolution-modifier))))
 
 (defscreen main-screen
   :on-show
@@ -84,7 +90,16 @@
       entities))
   
   :on-key-down
-  (fn [screen entities]
+  (fn [{:keys [key resolution-modifier] :as screen} entities]
+    (cond
+     (= key (key-code :page-down))
+     (do (setup-pixelate! screen (max (- resolution-modifier
+                                         resolution-step)
+                                      resolution-step)))
+     (= key (key-code :page-up))
+     (do (setup-pixelate! screen (min (+ resolution-modifier
+                                         resolution-step)
+                                      2))))
     nil)
 
   :on-key-up
