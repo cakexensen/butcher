@@ -11,6 +11,12 @@
 (def manager (asset-manager))
 (set-asset-manager! manager)
 
+(def screen-width 400)
+(def screen-height 240)
+
+(def default-screen-width (* 3 screen-width))
+(def default-screen-height (* 3 screen-height))
+
 (def camera-y 5)
 (def camera-z 5)
 
@@ -22,7 +28,26 @@
       (position! screen x camera-y (+ z camera-z))))
   entities)
 
-(def pixelate-factor 4)
+(defn setup-pixelate!
+  "change pixelation factor for rendering"
+  [{:keys [fbo fbo-batch] :as screen}]
+  (when fbo
+    (.dispose fbo))
+  (when fbo-batch
+    (.dispose fbo-batch))
+  (update! screen
+           :fbo (doto (FrameBuffer. (pixmap-format :r-g-b-888)
+                                    ;; compute an appropriate width
+                                    ;; based on real screen resolution
+                                    (/ (game :width)
+                                       (/ (game :height) screen-height))
+                                    screen-height
+                                    true)
+                  (-> .getColorBufferTexture
+                      (.setFilter
+                       Texture$TextureFilter/Nearest
+                       Texture$TextureFilter/Nearest)))
+           :fbo-batch (SpriteBatch.)))
 
 (defscreen main-screen
   :on-show
@@ -33,20 +58,13 @@
                        (position! 0 camera-y camera-z)
                        (direction! 0 2 0)
                        (near! 0.1)
-                       (far! 300))
-             :fbo (doto (FrameBuffer. (pixmap-format :r-g-b-888)
-                                      (/ (game :width) pixelate-factor)
-                                      (/ (game :height) pixelate-factor)
-                                      true)
-                    (-> .getColorBufferTexture
-                        (.setFilter
-                         Texture$TextureFilter/Nearest
-                         Texture$TextureFilter/Nearest)))
-             :fbo-batch (SpriteBatch.))
+                       (far! 300)))
+    (setup-pixelate! screen)
     (conj (e/make-boxes 20) (e/player)))
 
   :on-render
   (fn [{:keys [fbo fbo-batch] :as screen} entities]
+    ;; fbo/batch: for pixelation; separate later
     (.begin fbo)
     (clear! 0 0 0 1)
     (let [entities
@@ -83,7 +101,9 @@
   
   :on-resize
   (fn [screen entities]
-    (height! screen 600)))
+    (height! screen default-screen-height)
+    (setup-pixelate! screen)
+    nil))
 
 (defscreen text-screen
   :on-show
@@ -112,7 +132,7 @@
   
   :on-resize
   (fn [screen entities]
-    (height! screen 300)))
+    (height! screen default-screen-height)))
 
 (defgame butcher
   :on-create

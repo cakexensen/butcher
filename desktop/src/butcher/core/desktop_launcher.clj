@@ -6,5 +6,5 @@
 
 (defn -main
   []
-  (LwjglApplication. butcher "butcher" 800 600)
+  (LwjglApplication. butcher "butcher" default-screen-width default-screen-height)
   (Keyboard/enableRepeatEvents true))
