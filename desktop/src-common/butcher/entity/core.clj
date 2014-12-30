@@ -27,6 +27,10 @@
     :x (- (:x entity) x)
     :z (- (:z entity) z)))
 
+(defn flat-y
+  [h]
+  (/ h 2))
+
 (defn around
   [val radius]
   (let [half (/ radius 2)
@@ -79,9 +83,11 @@ id: id"
 
 (defn player
   []
-  (assoc (box 2 2 2 (color 0 0 1 1) 0 0 0 :player)
+  (assoc (box 2 2 2 (color 0.5 0.375 0.125 1) 0 (flat-y 2) 0 :player)
     :on-render
-    (fn [{:keys [x z] :as this} entities]
+    (fn [{:keys [x z] :as this}
+        delta-time
+        entities]
       (let [left? (key-pressed? :dpad-left)
             right? (key-pressed? :dpad-right)
             up? (key-pressed? :dpad-up)
@@ -103,18 +109,67 @@ id: id"
           this
           moved)))))
 
-(defn make-boxes
+(defn npcs
   [n]
-  (let [sizes (range 3 7)
-        colors (range 0 1 0.125)
-        positions (range -30 30)]
-    (take n (repeatedly #(box (rand-nth sizes)
-                              (rand-nth sizes)
-                              (rand-nth sizes)
-                              (color (rand-nth colors)
-                                     (rand-nth colors)
-                                     (rand-nth colors)
-                                     1)
-                              (rand-nth positions)
-                              0 ;; keep them on the flat plane
-                              (rand-nth positions))))))
+  (let [size 2
+        colors (range 0.125 0.875 0.125)
+        positions (range -50 50)
+        ai (fn [{:keys [x z x-vel z-vel last-action-time] :as this}
+               delta-time
+               entities]
+             (let [;; reduce how often ai takes actions
+                   can-act? (< (* (rand) 8) last-action-time)
+                   last-action-time (if can-act?
+                                      0
+                                      (+ delta-time last-action-time))
+                   this (assoc this :last-action-time last-action-time)
+                   move? (< 0.5 (rand))
+                   x-vel (if can-act?
+                           (if move?
+                             (/ (rand-nth [-1 0 1]) 10)
+                             0)
+                           x-vel)
+                   z-vel (if can-act?
+                           (if move?
+                             (/ (rand-nth [-1 0 1]) 10)
+                             0)
+                           z-vel)
+                   x (+ x x-vel)
+                   z (+ z z-vel)
+                   moved (assoc this :x x :z z :x-vel x-vel :z-vel z-vel)]
+               (if (colliding-any? moved entities)
+                 this
+                 moved)))]
+    (take n (repeatedly
+             #(assoc (box size size size
+                          (color (rand-nth colors)
+                                 (rand-nth colors)
+                                 (rand-nth colors)
+                                 1)
+                          (rand-nth positions)
+                          (flat-y size)
+                          (rand-nth positions))
+                :on-render ai
+                :last-action-time 0
+                :x-vel 0
+                :z-vel 0)))))
+
+(defn obstacles
+  [n]
+  (let [sizes (range 5 10)
+        colors (range 0.125 0.875 0.125)
+        near-color (range -0.125 0.125 0.125)
+        positions (range -60 60)]
+    (take n (repeatedly
+             #(let [w (rand-nth sizes)
+                    h (rand-nth sizes)
+                    l (rand-nth sizes)
+                    ;; color: pick random values near each other
+                    ;; to create more dull colored boxes
+                    r (rand-nth colors)
+                    g (+ r (rand-nth near-color))
+                    b (+ r (rand-nth near-color))
+                    x (rand-nth positions)
+                    y (flat-y h)
+                    z (rand-nth positions)]
+                (box w h l (color r g b 1) x y z))))))
