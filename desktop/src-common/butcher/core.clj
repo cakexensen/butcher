@@ -69,16 +69,17 @@
     (conj (e/obstacles 50) (e/npcs 10) (e/player)))
 
   :on-render
-  (fn [{:keys [fbo fbo-batch delta-time] :as screen} entities]
+  (fn [{:keys [fbo fbo-batch] :as screen} entities]
     ;; fbo/batch: for pixelation; separate later
     (.begin fbo)
     (clear! 0 0 0 1)
     (let [entities
-          (->> (for [entity entities]
-                 ;; call entity render fns
-                 (if (:on-render entity)
-                   ((:on-render entity) entity delta-time entities)
-                   entity))
+          (->> (flatten
+                (for [entity entities]
+                  ;; call entity render fns
+                  (if (:on-render entity)
+                    ((:on-render entity) entity screen entities)
+                    entity)))
                (render! screen)
                (update-screen! screen))]
       (.end fbo)

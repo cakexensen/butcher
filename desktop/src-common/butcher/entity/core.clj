@@ -48,16 +48,18 @@
 
 (defn colliding?
   [this that]
-  (every? true? (map #(conflicting? this that %1 %2)
-                     [:x :y :z]
-                     [:w :h :l])))
+  ;; entities don't collide with themselves
+  ;; only entities with w/h/l can collide
+  (if (or (= (:id this) (:id that))
+          (some nil? (mapcat #(map % [this that]) [:w :h :l])))
+    false
+    (every? true? (map #(conflicting? this that %1 %2)
+                       [:x :y :z]
+                       [:w :h :l]))))
 
 (defn colliding-any?
-  [{:keys [id] :as entity} entities]
-  (some
-   #(colliding? entity %)
-   ;; check entities other than current entity
-   (filter #(not= (:id %) id) entities)))
+  [entity entities]
+  (some #(colliding? entity %) entities))
 
 ;; entity constructors
 
@@ -85,8 +87,8 @@ id: id"
   []
   (assoc (box 2 2 2 (color 0.5 0.375 0.125 1) 0 (flat-y 2) 0 :player)
     :on-render
-    (fn [{:keys [x z] :as this}
-        delta-time
+    (fn [{:keys [x y z] :as this}
+        {:keys [delta-time total-time]}
         entities]
       (let [left? (key-pressed? :dpad-left)
             right? (key-pressed? :dpad-right)
@@ -115,7 +117,7 @@ id: id"
         colors (range 0.125 0.875 0.125)
         positions (range -50 50)
         ai (fn [{:keys [x z x-vel z-vel last-action-time] :as this}
-               delta-time
+               {:keys [delta-time]}
                entities]
              (let [;; reduce how often ai takes actions
                    can-act? (< (* (rand) 8) last-action-time)
