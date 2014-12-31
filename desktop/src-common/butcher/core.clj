@@ -19,8 +19,8 @@
 
 (def resolution-step 0.125)
 
-(def camera-y 5)
-(def camera-z 5)
+(def camera-y 3)
+(def camera-z 8)
 
 (defn update-screen!
   [screen entities]
@@ -62,7 +62,7 @@
              :renderer (model-batch)
              :camera (doto (perspective 75 (game :width) (game :height))
                        (position! 0 camera-y camera-z)
-                       (direction! 0 2 0)
+                       (direction! 0 (dec camera-y) 0)
                        (near! 0.1)
                        (far! 300)))
     (setup-pixelate! screen)
@@ -126,7 +126,7 @@
   (fn [screen entities]
     (update! screen :camera (orthographic) :renderer (stage))
     (assoc (label "-" (color :white))
-      :id :fps))
+      :id :fps :x 5))
 
   :on-render
   (fn [screen entities]
@@ -148,7 +148,7 @@
   
   :on-resize
   (fn [screen entities]
-    (height! screen default-screen-height)))
+    (height! screen screen-height)))
 
 (defgame butcher
   :on-create
