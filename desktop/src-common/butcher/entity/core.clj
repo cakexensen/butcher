@@ -84,38 +84,39 @@ id: id"
      (box w h l c x y z (gensym))))
 
 (defn player
-  []
-  (assoc (box 2 2 2 (color 0.5 0.375 0.125 1) 0 (flat-y 2) 0 :player)
-    :on-render
-    (fn [{:keys [x y z] :as this}
-        {:keys [delta-time total-time]}
-        entities]
-      (let [left? (key-pressed? :dpad-left)
-            right? (key-pressed? :dpad-right)
-            up? (key-pressed? :dpad-up)
-            down? (key-pressed? :dpad-down)
-            x-vel (cond
-                   left? -1
-                   right? 1
-                   :else 0)
-            z-vel (cond
-                   up? -1
-                   down? 1
-                   :else 0)
-            x-vel (/ x-vel 10)
-            z-vel (/ z-vel 10)
-            x (+ x x-vel)
-            z (+ z z-vel)
-            moved (assoc this :x x :z z)]
-        (if (colliding-any? moved entities)
-          this
-          moved)))))
+  [entities]
+  (conj entities
+        (assoc (box 2 2 2 (color 0.5 0.375 0.125 1) 0 (flat-y 2) 0 :player)
+          :on-render
+          (fn [{:keys [x y z] :as this}
+              {:keys [delta-time total-time]}
+              entities]
+            (let [left? (key-pressed? :s)
+                  right? (key-pressed? :f)
+                  up? (key-pressed? :e)
+                  down? (key-pressed? :d)
+                  x-vel (cond
+                         left? -1
+                         right? 1
+                         :else 0)
+                  z-vel (cond
+                         up? -1
+                         down? 1
+                         :else 0)
+                  x-vel (/ x-vel 10)
+                  z-vel (/ z-vel 10)
+                  x (+ x x-vel)
+                  z (+ z z-vel)
+                  moved (assoc this :x x :z z)]
+              (if (colliding-any? moved entities)
+                this
+                moved))))))
 
 (defn npcs
-  [n]
+  [entities n]
   (let [size 2
         colors (range 0.125 0.875 0.125)
-        positions (range -50 50)
+        positions (range -150 150)
         ai (fn [{:keys [x z x-vel z-vel last-action-time] :as this}
                {:keys [delta-time]}
                entities]
@@ -142,36 +143,65 @@ id: id"
                (if (colliding-any? moved entities)
                  this
                  moved)))]
-    (take n (repeatedly
-             #(assoc (box size size size
-                          (color (rand-nth colors)
-                                 (rand-nth colors)
-                                 (rand-nth colors)
-                                 1)
-                          (rand-nth positions)
-                          (flat-y size)
-                          (rand-nth positions))
-                :on-render ai
-                :last-action-time 0
-                :x-vel 0
-                :z-vel 0)))))
+    (loop [n n
+           entities entities]
+      (let [npc (assoc (box size size size
+                            (color (rand-nth colors)
+                                   (rand-nth colors)
+                                   (rand-nth colors)
+                                   1)
+                            (rand-nth positions)
+                            (flat-y size)
+                            (rand-nth positions))
+                  :on-render ai
+                  :last-action-time 0
+                  :x-vel 0
+                  :z-vel 0)
+            new-entities (conj entities npc)]
+        (cond
+         ;; if created on top of another entity, try again
+         (colliding-any? npc entities) (recur n entities)
+         ;; if n <= 1, stop recursion
+         (<= n 1) new-entities
+         ;; else add npc to entities and continue
+         :else (recur (dec n) new-entities))))))
 
 (defn obstacles
-  [n]
-  (let [sizes (range 5 10)
-        colors (range 0.125 0.875 0.125)
-        near-color (range -0.125 0.125 0.125)
-        positions (range -60 60)]
-    (take n (repeatedly
-             #(let [w (rand-nth sizes)
-                    h (rand-nth sizes)
-                    l (rand-nth sizes)
-                    ;; color: pick random values near each other
-                    ;; to create more dull colored boxes
-                    r (rand-nth colors)
-                    g (+ r (rand-nth near-color))
-                    b (+ r (rand-nth near-color))
-                    x (rand-nth positions)
-                    y (flat-y h)
-                    z (rand-nth positions)]
-                (box w h l (color r g b 1) x y z))))))
+  [entities n]
+  (let [sizes (range 10 30)
+        color-step 0.0625
+        colors (partition 3 (range color-step (- 1 color-step) color-step))
+        positions (concat (range -150 -15) (range 15 150))]
+    (loop [n n
+           entities entities]
+      (let [w (rand-nth sizes)
+            h (rand-nth sizes)
+            l (rand-nth sizes)
+            ;; color: pick random values near each other
+            ;; to create more dull colored boxes
+            color-group (rand-nth colors)
+            r (rand-nth color-group)
+            g (rand-nth color-group)
+            b (rand-nth color-group)
+            x (rand-nth positions)
+            y (flat-y h)
+            z (rand-nth positions)
+            obstacle (box w h l (color r g b 1) x y z)
+            new-entities (conj entities
+                               obstacle
+                               ;; until i can figure out how to insert flat
+                               ;; textures, place thin box underneath
+                               ;; for 'shadow' to help with visibility
+                               (box w 0.1 l
+                                    (color (/ r 2)
+                                           (/ g 2)
+                                           (/ b 2)
+                                           1)
+                                    x 0 z))]
+        (cond
+         ;; if created on top of another entity, try again
+         (colliding-any? obstacle entities) (recur n entities)
+         ;; if n <= 1, stop recursion
+         (<= n 1) new-entities
+         ;; else add obstacle to entities and continue
+         :else (recur (dec n) new-entities))))))

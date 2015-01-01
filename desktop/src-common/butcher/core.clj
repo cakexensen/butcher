@@ -66,7 +66,7 @@
                        (near! 0.1)
                        (far! 300)))
     (setup-pixelate! screen)
-    (conj (e/obstacles 50) (e/npcs 10) (e/player)))
+    (-> [] (e/obstacles 50) (e/npcs 10) (e/player)))
 
   :on-render
   (fn [{:keys [fbo fbo-batch] :as screen} entities]
