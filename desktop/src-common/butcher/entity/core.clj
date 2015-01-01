@@ -50,8 +50,9 @@
   [this that]
   ;; entities don't collide with themselves
   ;; only entities with w/h/l can collide
+  ;; check w only (optimization)
   (if (or (= (:id this) (:id that))
-          (some nil? (mapcat #(map % [this that]) [:w :h :l])))
+          (some nil? [(:w this) (:w that)]))
     false
     (every? true? (map #(conflicting? this that %1 %2)
                        [:x :y :z]
