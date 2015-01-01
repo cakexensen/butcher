@@ -68,6 +68,14 @@
     (setup-pixelate! screen)
     (-> [] (e/obstacles 50) (e/npcs 10) (e/player)))
 
+  :on-hide
+  (fn [{:keys [fbo fbo-batch] :as screen} entities]
+    (when fbo
+      (.dispose fbo))
+    (when fbo-batch
+      (.dispose fbo-batch))
+    nil)
+
   :on-render
   (fn [{:keys [fbo fbo-batch] :as screen} entities]
     ;; fbo/batch: for pixelation; separate later
