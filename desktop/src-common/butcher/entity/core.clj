@@ -1,7 +1,9 @@
 (ns butcher.entity.core
   (:require [play-clj.core :refer :all]
             [play-clj.g3d :refer :all]
-            [play-clj.math :refer :all]))
+            [play-clj.math :refer :all]
+            [butcher.entity.collision :refer :all]
+            [butcher.entity.quadtree :as q]))
 
 ;; mutating entity fns
 
@@ -31,37 +33,6 @@
   [h]
   (/ h 2))
 
-(defn around
-  [val radius]
-  (let [half (/ radius 2)
-        low (- val half)
-        high (+ val half)]
-    [low high]))
-
-;; http://stackoverflow.com/a/27672249/1404338
-(defn conflicting?
-  [this that dimension size]
-  (let [[this-c1 this-c2] (around (dimension this) (size this))
-        [that-c1 that-c2] (around (dimension that) (size that))]
-    (and (<= this-c1 that-c2)
-         (<= that-c1 this-c2))))
-
-(defn colliding?
-  [this that]
-  ;; entities don't collide with themselves
-  ;; only entities with w/h/l can collide
-  ;; check w only (optimization)
-  (if (or (= (:id this) (:id that))
-          (some nil? [(:w this) (:w that)]))
-    false
-    (every? true? (map #(conflicting? this that %1 %2)
-                       [:x :y :z]
-                       [:w :h :l]))))
-
-(defn colliding-any?
-  [entity entities]
-  (some #(colliding? entity %) entities))
-
 ;; entity constructors
 
 (defn box
@@ -86,7 +57,7 @@ id: id"
 
 (defn player
   [entities]
-  (conj entities
+  (q/quad-insert entities
         (assoc (box 2 2 2 (color 0.5 0.375 0.125 1) 0 (flat-y 2) 0 :player)
           :on-render
           (fn [{:keys [x y z] :as this}
@@ -108,8 +79,9 @@ id: id"
                   z-vel (/ z-vel 10)
                   x (+ x x-vel)
                   z (+ z z-vel)
-                  moved (assoc this :x x :z z)]
-              (if (colliding-any? moved entities)
+                  moved (assoc this :x x :z z)
+                  nearby (q/quad-search entities [x z] 10)]
+              (if (colliding-any? moved nearby)
                 this
                 moved))))))
 
@@ -140,28 +112,30 @@ id: id"
                            z-vel)
                    x (+ x x-vel)
                    z (+ z z-vel)
-                   moved (assoc this :x x :z z :x-vel x-vel :z-vel z-vel)]
-               (if (colliding-any? moved entities)
+                   moved (assoc this :x x :z z :x-vel x-vel :z-vel z-vel)
+                   nearby (q/quad-search entities [x z] 10)]
+               (if (colliding-any? moved nearby)
                  this
                  moved)))]
     (loop [n n
            entities entities]
-      (let [npc (assoc (box size size size
+      (let [x (rand-nth positions)
+            z (rand-nth positions)
+            npc (assoc (box size size size
                             (color (rand-nth colors)
                                    (rand-nth colors)
                                    (rand-nth colors)
                                    1)
-                            (rand-nth positions)
-                            (flat-y size)
-                            (rand-nth positions))
+                            x (flat-y size) z)
                   :on-render ai
                   :last-action-time 0
                   :x-vel 0
                   :z-vel 0)
-            new-entities (conj entities npc)]
+            new-entities (q/quad-insert entities npc)
+            nearby (q/quad-search entities [x z] 10)]
         (cond
          ;; if created on top of another entity, try again
-         (colliding-any? npc entities) (recur n entities)
+         (colliding-any? npc nearby) (recur n entities)
          ;; if n <= 1, stop recursion
          (<= n 1) new-entities
          ;; else add npc to entities and continue
@@ -188,7 +162,7 @@ id: id"
             y (flat-y h)
             z (rand-nth positions)
             obstacle (box w h l (color r g b 1) x y z)
-            new-entities (conj entities
+            new-entities (q/quad-insert entities
                                obstacle
                                ;; until i can figure out how to insert flat
                                ;; textures, place thin box underneath
@@ -198,10 +172,11 @@ id: id"
                                            (/ g 2)
                                            (/ b 2)
                                            1)
-                                    x 0 z))]
+                                    x 0 z))
+            nearby (q/quad-search entities [x z] 10)]
         (cond
          ;; if created on top of another entity, try again
-         (colliding-any? obstacle entities) (recur n entities)
+         (colliding-any? obstacle nearby) (recur n entities)
          ;; if n <= 1, stop recursion
          (<= n 1) new-entities
          ;; else add obstacle to entities and continue

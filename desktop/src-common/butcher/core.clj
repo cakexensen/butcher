@@ -3,7 +3,8 @@
             [play-clj.g3d :refer :all]
             [play-clj.math :refer :all]
             [play-clj.ui :refer :all]
-            [butcher.entity.core :as e])
+            [butcher.entity.core :as e]
+            [butcher.entity.quadtree :as q])
   (:import [com.badlogic.gdx.graphics Texture$TextureFilter]
            [com.badlogic.gdx.graphics.g2d SpriteBatch]
            [com.badlogic.gdx.graphics.glutils FrameBuffer]))
@@ -66,7 +67,8 @@
                        (near! 0.1)
                        (far! 300)))
     (setup-pixelate! screen)
-    (-> [] (e/obstacles 50) (e/npcs 10) (e/player)))
+    (q/quad-all ;; use quadtree for initialization, then revert to vec
+     (-> (q/quadtree [0 0] 200) (e/player) (e/obstacles 100) (e/npcs 20))))
 
   :on-hide
   (fn [{:keys [fbo fbo-batch] :as screen} entities]
@@ -81,12 +83,13 @@
     ;; fbo/batch: for pixelation; separate later
     (.begin fbo)
     (clear! 0 0 0 1)
-    (let [entities
+    (let [quadtree (apply q/quad-insert (q/quadtree [0 0] 200) entities)
+          entities
           (->> (flatten
                 (for [entity entities]
                   ;; call entity render fns
                   (if (:on-render entity)
-                    ((:on-render entity) entity screen entities)
+                    ((:on-render entity) entity screen quadtree)
                     entity)))
                (render! screen)
                (update-screen! screen))]
