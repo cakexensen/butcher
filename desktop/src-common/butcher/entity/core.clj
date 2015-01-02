@@ -86,10 +86,10 @@ id: id"
                 moved))))))
 
 (defn npcs
-  [entities n]
+  [{:keys [radius] :as entities} n]
   (let [size 2
         colors (range 0.125 0.875 0.125)
-        positions (range -150 150)
+        positions (range (- radius) radius)
         ai (fn [{:keys [x z x-vel z-vel last-action-time] :as this}
                {:keys [delta-time]}
                entities]
@@ -142,11 +142,11 @@ id: id"
          :else (recur (dec n) new-entities))))))
 
 (defn obstacles
-  [entities n]
+  [{:keys [radius] :as entities} n]
   (let [sizes (range 10 30)
         color-step 0.0625
         colors (partition 3 (range color-step (- 1 color-step) color-step))
-        positions (concat (range -150 -15) (range 15 150))]
+        positions (concat (range (- radius) -15) (range 15 radius))]
     (loop [n n
            entities entities]
       (let [w (rand-nth sizes)

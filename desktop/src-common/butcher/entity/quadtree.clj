@@ -69,7 +69,7 @@
   "retrieve all values in quadtree"
   [{:keys [at ne se nw sw] :as quad}]
   (if at ;; if tree
-    (mapcat quad-all (filter (comp not nil?) [ne se nw sw]))
+    (flatten (pmap quad-all (filter (comp not nil?) [ne se nw sw])))
     quad))
 
 (defn quad-intersects?
@@ -94,5 +94,6 @@
                                          (or (:w % nil) (/ radius 2))
                                          search-at search-radius)
                       children)
-              (mapcat #(quad-search % search-at search-radius) subtrees)))
+              (flatten (pmap #(quad-search % search-at search-radius)
+                             subtrees))))
     []))
