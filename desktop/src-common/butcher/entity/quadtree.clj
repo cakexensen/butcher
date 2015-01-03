@@ -29,14 +29,21 @@
   [at radius direction]
   (shift-at-radius (quad-shift direction) at (/ radius 2)))
 
+(declare quad-insert!)
+
 (defn quad-insert
   "insert value with position into quadtree"
   ([quad val & vals]
-     (loop [quad (quad-insert quad val)
+     (loop [quad (quad-insert! (transient quad) val)
             vals vals]
        (if vals
-         (recur (quad-insert quad (first vals)) (next vals))
-         quad)))
+         (recur (quad-insert! quad (first vals)) (next vals))
+         (persistent! quad))))
+  ([quad val]
+     (persistent! (quad-insert! (transient quad) val))))
+
+(defn quad-insert!
+  "transient quad-insert (internal)"
   ([{:keys [at radius max-depth depth] :as quad} {:keys [x z] :as val}]
      (let [[ox oz] at
            direction (if (< ox x)
@@ -49,21 +56,18 @@
                          (-> child first :z (= z)))
            subtree? (and child (contains? child :at))
            max-depth-reached? (= depth max-depth)]
-       (assoc quad direction
-              (cond
-               (or overlap? (and children? max-depth-reached?)) (conj child val)
-               max-depth-reached? [val]
-               subtree? (quad-insert child val)
-               children? (loop [quad (quadtree (subtree-at at radius direction)
-                                               (/ radius 2)
-                                               max-depth
-                                               (inc depth))
-                                vals (conj child val)]
-                           (if vals
-                             (recur (quad-insert quad (first vals))
-                                    (next vals))
-                             quad))
-               :else [val])))))
+       (assoc! quad direction
+               (cond
+                (or overlap? (and children? max-depth-reached?))
+                (conj child val)
+                max-depth-reached? [val]
+                subtree? (quad-insert child val)
+                children? (apply quad-insert
+                                 (quadtree (subtree-at at radius direction)
+                                           (/ radius 2)
+                                           max-depth (inc depth))
+                                 (conj child val))
+                :else [val])))))
 
 (defn quad-all
   "retrieve all values in quadtree"
